@@ -34,6 +34,7 @@ var config = null;
 // var apigClientFactory = require('aws-api-gateway-client').default;
 // var apigClient = null;
 var botMessage = null;
+var botResponse = null;
 var lexruntime = null;
 
 function login(callback) {
@@ -95,7 +96,14 @@ function chatbotResponseUtil(question, callback) {
         callback(err);
     }
     else{
-        botMessage = data.message;
+        try {
+          botResponse = JSON.parse(data.message);
+          console.log(botResponse);
+          botMessage = 'Here are a few clothing siggestions for your event!';
+        } catch (e) {
+          console.log('json parse error');
+          botMessage = data.message;
+        }
         console.log('Sucess lex', data);
         callback(data);
     }
@@ -155,42 +163,33 @@ class App extends Component {
           messages
         });
         var myNode = document.getElementById("dresses");
-        console.log(myNode)
+        //console.log(myNode)
         while (myNode.firstChild) {
             myNode.removeChild(myNode.firstChild);
         }
-        //for (var i = imageList.length - 1; i >= 0; i--) {
-          //TODO: for loop should be for every category we return such as dresses, shoes etc.
-          for(var j=0;j<3;j++){
+        if(botResponse !== null) {
+          for (var clothingType in botResponse) {
             var elem1=document.createElement("div");
             elem1.className="card";
             elem1.setAttribute("style","color: #2c3e50;display: flex;overflow : scroll;margin:10px;padding:20px")
             var elem2=document.createElement("h2");
             elem2.setAttribute("style","color:white;");
-            elem2.innerText="Dresses";
-            //TODO: Set inner text to cattegory : Dresses, shoes etc.
-            //for loop should be for each element in imageList
-            //Replace current for loop with :
-          //   for (var i = imageList.length - 1; i >= 0; i--) 
-          //Replce line 113 elem4.src to :
-         //elem4.src = 'https://s3-us-west-2.amazonaws.com/hw3photos/'+imageList[i];
-         //replace the s3 link
-            for (var i = 0;i<5;i++){
+            elem2.innerText=clothingType;
+            for(var i = 0; i < botResponse[clothingType].length; i++){
               var elem3 = document.createElement("div");
               elem3.className="cardContent";
               elem3.setAttribute("style","color: #e74c3c; margin: 5px; min-width:100px;min-height:100px;");
-              
               var elem4=document.createElement("img");
               elem4.setAttribute("style","width: 100%; height: 100%")
-              elem4.src = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png';
-              // elem2.src = 'https://s3-us-west-2.amazonaws.com/hw3photos/'+imageList[i];
+              //elem4.src = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png';
+              console.log(botResponse[clothingType][i]);
+              elem4.src = botResponse[clothingType][i].image;
               elem3.appendChild(elem4);
               elem1.appendChild(elem3);
-              
-             //document.getElementById('myImg').append("<img src=\"https://s3-us-west-2.amazonaws.com/hw3photos/test2.jpg\"/>");
+              document.getElementById('dresses').append(elem2)
+              document.getElementById('dresses').append(elem1)
+            }
           }
-          document.getElementById('dresses').append(elem2)
-          document.getElementById('dresses').append(elem1)
         }
     });
   }
