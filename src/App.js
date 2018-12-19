@@ -16,68 +16,108 @@ var poolData = {
   ClientId : CLIENT_ID
 };
 
-var authenticationData = {
-  Username : 'pk2600@columbia.edu',
-  Password : 'Qwerty123#',
-};
+// var authenticationData = {
+//   Username : 'pk2600@columbia.edu',
+//   Password : 'Qwerty123#',
+// };
 
-var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+// var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
 var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-var userData = {
-  Username : 'pk2600@columbia.edu',
-  Pool : userPool
-};
+// var userData = {
+//   Username : 'pk2600@columbia.edu',
+//   Pool : userPool
+// };
 
 //var botName = 'Fashionista';
 var loggedIn = false;
 var config = null;
-// var apigClientFactory = require('aws-api-gateway-client').default;
-// var apigClient = null;
 var botMessage = null;
 var botResponse = null;
 var lexruntime = null;
+var userid = null;
 
-function login(callback) {
-  var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-  cognitoUser.authenticateUser(authenticationDetails, {
-    onSuccess: function (result) {
+function getCurrentUser(callback) {
+  var cognitoUser = userPool.getCurrentUser();
+  if (cognitoUser !== null) {
+    cognitoUser.getSession(function(err, session) {
+      if (err) {
+        console.log(err);
+        alert(err.message);
+        return;
+      }
+      console.log('session validity: ' + session.isValid());
+      loggedIn = true;
+      cognitoUser.getUserAttributes(function(err, result) {
+        if (err) {
+          console.log(err);
+          alert(err.message);
+          return;
+        }
         console.log(result);
-        //var accessToken = result.getAccessToken().getJwtToken();
-        var idToken = result.getIdToken().getJwtToken();
-        AWS.config.region = REGION;
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-            IdentityPoolId : IDENTITY_POOL_ID,
+        for (var i = 0; i < result.length; i++) {
+          //console.log('attribute ' + result[i].getName() + ' has value ' + result[i].getValue());
+          if(result[i].getName() === 'email') {
+            userid = result[i].getValue();
+            userid = userid.replace('@','');
+          }
+        }
+        console.log('Userid:', userid);
+        AWS.config.update({
+          credentials: new AWS.CognitoIdentityCredentials({
+            IdentityPoolId: IDENTITY_POOL_ID,
             Logins : {
-                [authenticator] : idToken
-            }
+               [authenticator] : session.getIdToken().getJwtToken()
+             }
+          }),
+          region: REGION
         });
-        AWS.config.credentials.refresh((error) => {
-            if (error) {
-                console.log('Error logging in');
-                console.error(error);
-            } else {
-                console.log('Successfully logged!');
-                loggedIn = true;
-                config = {
-                  apiKey : 'V6LgAf2rgTapOjUT1gRf2FooPUsrRiz4kC8rKfJ1',
-                  invokeUrl : 'https://a7f05x8fi9.execute-api.us-west-2.amazonaws.com/test',
-                  region : REGION,
-                  accessKey : AWS.config.credentials.accessKeyId, // REQUIRED
-                  secretKey : AWS.config.credentials.secretAccessKey, // REQUIRED
-                  sessionToken : AWS.config.credentials.sessionToken
-                };
-                //apigClient = apigClientFactory.newClient(config);
-                lexruntime = new AWS.LexRuntime({apiVersion: '2016-11-28', region : 'us-west-2'});
-                callback(null);
-            }
-        });
-    },
-    onFailure: function(err) {
-      alert(err.message || JSON.stringify(err));
-      callback(null);
-    },
-  });
+        lexruntime = new AWS.LexRuntime({apiVersion: '2016-11-28', region : REGION});
+        callback(null);
+      });
+    });
+  }
 }
+
+// function login(callback) {
+//   var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+//   cognitoUser.authenticateUser(authenticationDetails, {
+//     onSuccess: function (result) {
+//         console.log(result);
+//         //var accessToken = result.getAccessToken().getJwtToken();
+//         var idToken = result.getIdToken().getJwtToken();
+//         AWS.config.region = REGION;
+//         AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+//             IdentityPoolId : IDENTITY_POOL_ID,
+//             Logins : {
+//                 [authenticator] : idToken
+//             }
+//         });
+//         AWS.config.credentials.refresh((error) => {
+//             if (error) {
+//                 console.log('Error logging in');
+//                 console.error(error);
+//             } else {
+//                 console.log('Successfully logged!');
+//                 loggedIn = true;
+//                // config = {
+//                //   apiKey : 'V6LgAf2rgTapOjUT1gRf2FooPUsrRiz4kC8rKfJ1',
+//                //   invokeUrl : 'https://a7f05x8fi9.execute-api.us-west-2.amazonaws.com/test',
+//                //   region : REGION,
+//                //   accessKey : AWS.config.credentials.accessKeyId, // REQUIRED
+//                //   secretKey : AWS.config.credentials.secretAccessKey, // REQUIRED
+//                //   sessionToken : AWS.config.credentials.sessionToken
+//                // };
+//                 lexruntime = new AWS.LexRuntime({apiVersion: '2016-11-28', region : 'us-west-2'});
+//                 callback(null);
+//             }
+//         });
+//     },
+//     onFailure: function(err) {
+//       alert(err.message || JSON.stringify(err));
+//       callback(null);
+//     },
+//   });
+// }
 
 function chatbotResponseUtil(question, callback) {
   var params = {
@@ -85,7 +125,7 @@ function chatbotResponseUtil(question, callback) {
     botName: 'cloud_project', /* required */
     contentType: 'text/plain; charset=utf-8', /* required */
     inputStream: question, /* required */
-    userId: 'pk2600', /* required */
+    userId: userid, /* required */
     accept: 'text/plain; charset=utf-8',
     requestAttributes : {},
     sessionAttributes : {}
@@ -112,8 +152,8 @@ function chatbotResponseUtil(question, callback) {
 
 function chatbotResponse(input, obj, callback) {
   if(loggedIn === false) {
-    login(function() {
-      console.log('Login complete');
+    getCurrentUser(function() {
+      console.log('Login done');
       chatbotResponseUtil(input, function() {
         callback(obj);
       });
