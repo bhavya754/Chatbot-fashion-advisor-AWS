@@ -8,9 +8,11 @@ const REGION = "us-west-2";
 const USER_POOL_ID = 'us-west-2_AcLaKSHto';
 const CLIENT_ID = '37aqjp00rvdj6mlilm9b75s895';
 const IDENTITY_POOL_ID = 'us-west-2:49389f7e-59d1-4784-b957-79c8d0aaafea';
+
 const authenticator = `cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`;
 var AWS = require('aws-sdk');
-
+const Secret_key= "4c+6mnPieLY/Urz1GzsrVniBmG+cDaZcX9C6uMrA";
+const Access_key= "AKIAJLUFKYHZLTAEGXEQ";
 var poolData = {
   UserPoolId : USER_POOL_ID,
   ClientId : CLIENT_ID
@@ -22,7 +24,6 @@ var poolData = {
 // };
 
 // var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
-var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 // var userData = {
 //   Username : 'pk2600@columbia.edu',
 //   Pool : userPool
@@ -35,9 +36,13 @@ var botMessage = null;
 var botResponse = null;
 var lexruntime = null;
 var userid = null;
+var voiceip = false;
 
 function getCurrentUser(callback) {
+    var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
   var cognitoUser = userPool.getCurrentUser();
+console.log("got user",cognitoUser);
+console.log("got user",userPool);
   if (cognitoUser !== null) {
     cognitoUser.getSession(function(err, session) {
       if (err) {
@@ -57,8 +62,10 @@ function getCurrentUser(callback) {
         for (var i = 0; i < result.length; i++) {
           //console.log('attribute ' + result[i].getName() + ' has value ' + result[i].getValue());
           if(result[i].getName() === 'email') {
+
             userid = result[i].getValue();
             userid = userid.replace('@','');
+             console.log(userid)
           }
         }
         console.log('Userid:', userid);
@@ -154,6 +161,13 @@ function chatbotResponse(input, obj, callback) {
   if(loggedIn === false) {
     getCurrentUser(function() {
       console.log('Login done');
+      // AWS.config.credentials.refresh((error) => {
+      //     if (error) {
+      //         console.error(error);
+      //     } else {
+      //         console.log('Successfully logged!');
+      //     }
+      // });
       chatbotResponseUtil(input, function() {
         callback(obj);
       });
@@ -181,6 +195,20 @@ class App extends Component {
 
   async submitMessage() {
     const { input } = this.state;
+    if(voiceip == true){
+      const message = new Message({
+      id: 1,
+      message: input,
+    });
+    let messages = [...this.state.messages, message];
+
+    this.setState({
+      messages,
+      input: ''
+    });
+    voiceip = false;
+    return;
+    }
     if (input === '') return;
     const message = new Message({
       id: 0,
@@ -193,6 +221,7 @@ class App extends Component {
       input: ''
     });
     chatbotResponse(input, this, function(res) {
+
         console.log('Gotten response:', botMessage);
         const message = new Message({
           id: 1,
@@ -208,22 +237,34 @@ class App extends Component {
             myNode.removeChild(myNode.firstChild);
         }
         if(botResponse !== null) {
+          var chat=document.getElementById('chatbot');
+
+          chat.setAttribute("style","width: 30%;float: left;height:600px;overflow: scroll;marginRight: 10px; marginLeft: 10px");
+          var dresses=document.getElementById('dresses');
+          if (dresses.style.display === "none") {
+          dresses.style.display = "block";}
+          // dresses.setAttribute("style","color: #2c3e50;width: 60%;float: right;height:600px; overflow:scroll; marginTop:5px; marginRight:5px;display : ")
           for (var clothingType in botResponse) {
+
             var elem1=document.createElement("div");
             elem1.className="card";
-            elem1.setAttribute("style","color: #2c3e50;display: flex;overflow : scroll;margin:10px;padding:20px")
+            elem1.setAttribute("style","color: #2c3e50;display: flex;overflow : scroll;margin:10px;padding:10px")
             var elem2=document.createElement("h2");
-            elem2.setAttribute("style","color:white;");
-            elem2.innerText=clothingType;
+            elem2.setAttribute("style","color:white;text-align:center; font-size: 30px;margin-bottom: 0px;");
+            elem2.innerText=clothingType.charAt(0).toUpperCase() + clothingType.slice(1);;
             for(var i = 0; i < botResponse[clothingType].length; i++){
               var elem3 = document.createElement("div");
               elem3.className="cardContent";
-              elem3.setAttribute("style","color: #e74c3c; margin: 5px; min-width:100px;min-height:100px;");
-              var elem4=document.createElement("img");
-              elem4.setAttribute("style","width: 100%; height: 100%")
-              //elem4.src = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png';
+              elem3.setAttribute("style","color: #e74c3c; margin: 5px;");
+              var elem4=document.createElement("a");
+              var url=botResponse[clothingType][i].product_url;
+              elem4.setAttribute("href",url);
+              elem4.setAttribute("target","_blank")
+              var elem5= document.createElement("img");
+              elem5.src = botResponse[clothingType][i].image;
+              elem5.setAttribute("style","width: 100%; height: 100%");
+              elem4.appendChild(elem5);
               console.log(botResponse[clothingType][i]);
-              elem4.src = botResponse[clothingType][i].image;
               elem3.appendChild(elem4);
               elem1.appendChild(elem3);
               document.getElementById('dresses').append(elem2)
@@ -231,14 +272,12 @@ class App extends Component {
             }
           }
         }
+         var temp=document.getElementById('chatbot');
+              temp.scrollTop = temp.scrollHeight; //- temp.clientHeight;
     });
+   
   }
 
-  _handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      this.submitMessage()
-    }
-  }
 
   onChange(e) {
     const input = e.target.value
@@ -248,12 +287,14 @@ class App extends Component {
   }
 
   render() {
+
     return (
+       
       <div id='app' className="App" >
         <header style={styles.header}>
-          <p style={styles.headerTitle}>Fashionista: Say adios to fashion faux pas!</p>
+          <img src="https://s3-us-west-2.amazonaws.com/fashionadvisorproject/header.png" style={styles.imageStyle}/>
         </header>
-        <div style={styles.chatbotStyle}>
+        <div id='chatbot' style={styles.chatbotStyle}>
         <div style={styles.messagesContainer}>
 
         <h2>{this.state.finalMessage}</h2>
@@ -270,20 +311,189 @@ class App extends Component {
           value={this.state.input}
         />
         </div>
+        <div>
+        <button className="button" id="startBtn">START RECORDING</button>
+
+      <button className="button" id="stopBtn">STOP RECORDING</button>
+      </div>
+      <div>
+      <audio id="audio" controls>No support of audio tag</audio>
+      </div>
+      <div>
+      <audio id="audioResponse" controls>No support of audio tag</audio>
+      </div>
+
         </div>
         <div id='dresses' style={styles.card}></div>
         </div>
+     
     );
+
   }
+
+componentDidMount()
+{
+var obj = this;
+navigator.mediaDevices.getUserMedia({audio:true})
+.then(function onSuccess(stream) {
+
+  var recorder = window.recorder = new MediaRecorder(stream);
+
+  var data = [];
+  recorder.ondataavailable = function(e) {
+    data.push(e.data);
+  };
+
+  recorder.onerror = function(e) {
+    throw e.error || new Error(e.name);       }
+
+  recorder.onstart = function(e) {
+    data = [];
+  }
+
+  recorder.onstop = function(e) {
+
+    var blobData = new Blob(data, {type: 'audio/x-l16'});
+
+    document.getElementById("audio").src = window.URL.createObjectURL(blobData);
+
+    var reader = new FileReader();
+    reader.onload = function() {
+      var audioContext = new AudioContext();
+      audioContext.decodeAudioData(reader.result, function(buffer) {
+
+        reSample(buffer, 16000, function(newBuffer){
+
+          var arrayBuffer = convertFloat32ToInt16(newBuffer.getChannelData(0));              sendToServer(arrayBuffer);
+        });
+      });
+    };
+    reader.readAsArrayBuffer(blobData);
+  }
+
+})
+.catch(function onError(error) {
+  console.log(error.message);
+});
+
+var startBtn = document.getElementById('startBtn');
+ var stopBtn = document.getElementById('stopBtn');
+
+ startBtn.onclick = start;
+ stopBtn.onclick = stop;
+ 
+ function start(){
+  if(loggedIn === false) {
+    getCurrentUser(function() {
+      console.log('Login done', userid);
+      window.recorder.start();
+  });
+  }
+  else {
+    window.recorder.start();;
+  }
+ }
+
+ function stop(){
+   window.recorder.stop()
+ }
+
+ function reSample(audioBuffer, targetSampleRate, onComplete) {
+      var channel = audioBuffer.numberOfChannels;
+      var samples = audioBuffer.length * targetSampleRate / audioBuffer.sampleRate;
+
+      var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
+      var bufferSource = offlineContext.createBufferSource();
+      bufferSource.buffer = audioBuffer;
+
+      bufferSource.connect(offlineContext.destination);
+      bufferSource.start(0);
+
+offlineContext.startRendering().then(function(renderedBuffer){
+          onComplete(renderedBuffer);
+      })
+  }
+
+function convertFloat32ToInt16(buffer) {
+      var l = buffer.length;
+      var buf = new Int16Array(l);
+      while (l--) {
+          buf[l] = Math.min(1, buffer[l]) * 0x7FFF;
+      }
+      return buf.buffer;
+  }
+
+  var myCredentials = new AWS.CognitoIdentityCredentials({IdentityPoolId:IDENTITY_POOL_ID}),
+  myConfig = new AWS.Config({
+      credentials: myCredentials,
+      "accessKeyId":Access_key, "secretAccessKey": Secret_key, "region": REGION
+
+    });
+
+
+    function sendToServer(audioData){
+      console.log('in sendToServer');
+      console.log(userid);
+        var params = {
+          botAlias: 'test', /* required */
+          botName: 'cloud_project', /* required */
+          contentType: 'audio/x-l16; sample-rate=16000; channel-count=1', /* required */
+          inputStream: audioData, /* required */
+          userId: userid, /* required */
+          accept: 'audio/mpeg',
+          //voiceId: 'kendra',
+          //sessionAttributes: '' /* This value will be JSON encoded on your behalf with JSON.stringify() */
+        };
+        var lexruntime = new AWS.LexRuntime({"accessKeyId":Access_key, "secretAccessKey": Secret_key, "region": REGION});
+        lexruntime.postContent(params, function(err, data) {
+          console.log('inpost');
+          if (err) console.log('ERROR!', err, err.stack); // an error occurred
+          else {
+            console.log('in else');
+             console.log(data.message);
+             var uInt8Array = new Uint8Array(data.audioStream);
+             var arrayBuffer = uInt8Array.buffer;
+             var blob = new Blob([arrayBuffer]);
+             console.log(blob);
+             var url = URL.createObjectURL(blob);
+            document.getElementById("audioResponse").src = url;
+            document.getElementById("audioResponse").play();
+            const input = data.message;
+              obj.setState({
+                input
+              });
+            voiceip = true;
+            obj.submitMessage();
+          }
+        });
+      }
+}
+ _handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      this.submitMessage();
+    }
+    // if(e.key === 't'){
+    //   var f=new this.componentDidMount();
+    //   f.start();
+    //}
+  }
+
 }
 
+
+
 const styles = {
+  imageStyle:{
+    width:'100%'
+  },
   chatbotStyle:{
-    width: '30%',
+    //width: '30%',
     float: 'left',
     height:'600px',
     overflow: 'scroll',
-    marginRight: '10px'
+    marginLeft: '37%',
+    marginBottom: '5px'
+    //align: 'center',
   },
   cardContent: {
      backgroundColor: '#e74c3c',
@@ -292,7 +502,13 @@ const styles = {
   card: {
     backgroundColor: '#2c3e50',
     width: '60%',
-    float: 'right'
+    float: 'right',
+    height:'600px',
+    overflow:'scroll',
+    marginTop:'5px',
+    marginRight:'5px',
+    display : 'none',
+    marginBottom: '5px'
   },
   bubbleStyles: {
     text: {
@@ -308,9 +524,10 @@ const styles = {
     fontSize: 22
   },
   header: {
-    backgroundColor: 'rgb(0, 132, 255)',
-    padding: 20,
-    borderTop: '12px solid rgb(204, 204, 204)'
+    backgroundColor: 'white',
+    // borderTop: '12px solid rgb(204, 204, 204)',
+    width: window.innerWidth,
+    height: '100%',
   },
   messagesContainer: {
     display: 'flex',
