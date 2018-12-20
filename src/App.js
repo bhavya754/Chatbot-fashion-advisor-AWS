@@ -1,3 +1,4 @@
+
 import React, { Component } from 'react';
 
 import { ChatFeed, Message } from 'react-chat-ui'
@@ -240,6 +241,8 @@ class App extends Component {
           var chat=document.getElementById('chatbot');
 
           chat.setAttribute("style","width: 30%;float: left;height:600px;overflow: scroll;marginRight: 10px; marginLeft: 10px");
+          var chat2=document.getElementById('voicediv');
+          chat2.setAttribute("style","width: 400px;float:left;");
           var dresses=document.getElementById('dresses');
           if (dresses.style.display === "none") {
           dresses.style.display = "block";}
@@ -291,36 +294,36 @@ class App extends Component {
     return (
        
       <div id='app' className="App" >
-        <header style={styles.header}>
-          <img src="https://s3-us-west-2.amazonaws.com/fashionadvisorproject/header.png" style={styles.imageStyle}/>
-        </header>
+       
         <div id='chatbot' style={styles.chatbotStyle}>
         <div style={styles.messagesContainer}>
 
-        <h2>{this.state.finalMessage}</h2>
+
         <ChatFeed
           messages={this.state.messages}
           hasInputField={false}
           bubbleStyles={styles.bubbleStyles}
         />
-
+        <div id='voicediv' style={styles.divStyle}>
+       
         <input
           onKeyPress={this._handleKeyPress}
           onChange={this.onChange.bind(this)}
           style={styles.input}
           value={this.state.input}
         />
-        </div>
-        <div>
-        <button className="button" id="startBtn">START RECORDING</button>
+        <input id="Btn" type="image" value="start" style={styles.mic} src="https://s3-us-west-2.amazonaws.com/fashionadvisorproject/mic.png" />
 
-      <button className="button" id="stopBtn">STOP RECORDING</button>
+        </div>
+         </div>
+        <div>
+        
       </div>
       <div>
-      <audio id="audio" controls>No support of audio tag</audio>
+      <audio id="audio" controls style={styles.hideCon} >No support of audio tag</audio>
       </div>
       <div>
-      <audio id="audioResponse" controls>No support of audio tag</audio>
+      <audio id="audioResponse" controls style={styles.hideCon}>No support of audio tag</audio>
       </div>
 
         </div>
@@ -330,7 +333,41 @@ class App extends Component {
     );
 
   }
+   // <header style={styles.header}>
+   //        <img src="https://s3-us-west-2.amazonaws.com/fashionadvisorproject/header.png" style={styles.imageStyle}/>
+   //        <input id='logout' type="image" src="https://s3-us-west-2.amazonaws.com/fashionadvisorproject/logout.png" style={styles.logout}/>
+   //      </header>
 
+  start(){
+  if(loggedIn === false) {
+    getCurrentUser(function() {
+      console.log('Login done', userid);
+      window.recorder.start();
+  });
+  }
+  else {
+    window.recorder.start();
+  }
+ }
+
+  stop(){
+   window.recorder.stop()
+ }
+ _handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      this.submitMessage();
+    }
+    else if(e.key === '['){
+      this.start();
+    }
+    else if(e.key === ']') {
+      this.stop();
+    }
+  }
+          // <h2>{this.state.finalMessage}</h2>
+//   <button className="button" id="startBtn">START RECORDING</button>
+
+// <button className="button" id="stopBtn">STOP RECORDING</button>
 componentDidMount()
 {
 var obj = this;
@@ -376,26 +413,37 @@ navigator.mediaDevices.getUserMedia({audio:true})
   console.log(error.message);
 });
 
-var startBtn = document.getElementById('startBtn');
- var stopBtn = document.getElementById('stopBtn');
-
- startBtn.onclick = start;
- stopBtn.onclick = stop;
- 
- function start(){
-  if(loggedIn === false) {
-    getCurrentUser(function() {
-      console.log('Login done', userid);
-      window.recorder.start();
-  });
+// var startBtn = document.getElementById('startBtn');
+//  var stopBtn = document.getElementById('stopBtn');
+var btn=document.getElementById('Btn');
+btn.onclick = toggle;
+var log1=document.getElementById('logout');
+// log1.onclick = logout_func;
+function logout_func()
+{
+  ;
+}
+ // startBtn.onclick = start;
+ // stopBtn.onclick = stop;
+ function toggle(){
+  try
+  {
+    var btn=document.getElementById('Btn');
+    if (btn.value== 'start')
+    {  
+      btn.value = 'stop';
+      obj.start();
+    }
+    else 
+    {
+      btn.value='start';
+      obj.stop();
+    }
   }
-  else {
-    window.recorder.start();;
+  catch(err)
+  {
+    console.log("error", err);
   }
- }
-
- function stop(){
-   window.recorder.stop()
  }
 
  function reSample(audioBuffer, targetSampleRate, onComplete) {
@@ -468,30 +516,36 @@ function convertFloat32ToInt16(buffer) {
         });
       }
 }
- _handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      this.submitMessage();
-    }
-    // if(e.key === 't'){
-    //   var f=new this.componentDidMount();
-    //   f.start();
-    //}
-  }
+
 
 }
 
 
 
 const styles = {
+  logout:{
+    width: '100px',
+    height: '30px',
+    float: 'right',
+    transform: 'translate(-40%, -680%)',
+  },
+  divStyle:{
+    width: '500px',
+  },
+  hideCon:{
+    display:"none"
+  },
   imageStyle:{
-    width:'100%'
+    width:'100%',
+    zIndex: 1,
+    height: 'auto',
   },
   chatbotStyle:{
     //width: '30%',
     float: 'left',
     height:'600px',
     overflow: 'scroll',
-    marginLeft: '37%',
+    marginLeft: '30%',
     marginBottom: '5px'
     //align: 'center',
   },
@@ -516,7 +570,7 @@ const styles = {
     },
     chatbubble: {
       borderRadius: 30,
-      padding: 10
+      padding: 10,
     }
   },
   headerTitle: {
@@ -524,6 +578,7 @@ const styles = {
     fontSize: 22
   },
   header: {
+     position: 'relative',
     backgroundColor: 'white',
     // borderTop: '12px solid rgb(204, 204, 204)',
     width: window.innerWidth,
@@ -537,13 +592,15 @@ const styles = {
   },
   input: {
     fontSize: 16,
-    padding: 10,
     outline: 'none',
-    width: '100%',
+    width: '70%',
     border: 'none',
     borderBottom: '2px solid rgb(0, 132, 255)'
+  },
+  mic:{
+    width: '25px',
+    height: '25px',
   }
-
 }
 
 export default App
